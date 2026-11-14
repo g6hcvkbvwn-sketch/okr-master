@@ -9,8 +9,9 @@ import {
 import { ProjectSchema } from "../shared/schemas";
 import type { Project } from "../shared/types";
 
-export function CloudProjects({ currentProject, onClose, onSelect }: {
+export function CloudProjects({ currentProject, onBusyChange, onClose, onSelect }: {
   currentProject: Project | null;
+  onBusyChange: (busy: boolean) => void;
   onClose: () => void;
   onSelect: (project: Project) => void;
 }) {
@@ -18,19 +19,23 @@ export function CloudProjects({ currentProject, onClose, onSelect }: {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [listVersion, setListVersion] = useState(0);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let mounted = true;
+    setLoading(true);
+    setError("");
     listCloudProjects()
       .then((items) => { if (mounted) setProjects(items); })
       .catch((caught: unknown) => { if (mounted) setError(errorText(caught)); })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  }, []);
+  }, [listVersion]);
 
   async function open(id: string) {
     setBusy(true);
+    onBusyChange(true);
     setError("");
     try {
       onSelect(await selectCloudProject(id));
@@ -38,6 +43,7 @@ export function CloudProjects({ currentProject, onClose, onSelect }: {
       setError(errorText(caught));
     } finally {
       setBusy(false);
+      onBusyChange(false);
     }
   }
 
@@ -46,6 +52,7 @@ export function CloudProjects({ currentProject, onClose, onSelect }: {
     event.target.value = "";
     if (!file) return;
     setBusy(true);
+    onBusyChange(true);
     setError("");
     try {
       if (file.size > 2_000_000) throw new Error("The project file is too large.");
@@ -64,34 +71,35 @@ export function CloudProjects({ currentProject, onClose, onSelect }: {
       setError(errorText(caught));
     } finally {
       setBusy(false);
+      onBusyChange(false);
     }
   }
 
   return (
-    <div className="modal-backdrop" role="presentation">
-      <section className="modal-card" role="dialog" aria-modal="true" aria-labelledby="cloud-projects-title">
-        <div className="section-heading">
-          <h2 id="cloud-projects-title">Cloud projects</h2>
-          <button aria-label="Close" className="icon-button" disabled={busy} onClick={onClose} type="button">×</button>
+    <section className="cloud-projects" aria-labelledby="cloud-projects-title">
+      <h3 id="cloud-projects-title">Open an existing project</h3>
+      <p>All signed-in users can access these projects. To replace a cloud project with an offline copy, open it first.</p>
+      {error && (
+        <div className="notice notice-error" role="alert">
+          {error}{" "}
+          <button className="button button-secondary" disabled={busy} onClick={() => setListVersion((version) => version + 1)} type="button">Try again</button>
         </div>
-        <p>All signed-in users can access these projects. To replace a cloud project with an offline copy, open it first.</p>
-        {error && <div className="notice notice-error" role="alert">{error}</div>}
-        {loading ? <p>Loading projects…</p> : projects.length === 0 ? <p>No cloud projects yet.</p> : (
-          <div className="stack">
-            {projects.map((project) => (
-              <button className="button button-secondary" disabled={busy} key={project.id} onClick={() => void open(project.id)} type="button">
-                {project.name}
-              </button>
-            ))}
-          </div>
-        )}
-        <input ref={fileInput} accept=".json,application/json" hidden onChange={(event) => void importFile(event)} type="file" />
-        <div className="button-row modal-actions">
-          <button className="button button-secondary" disabled={busy || loading} onClick={() => fileInput.current?.click()} type="button">Import project JSON</button>
-          <button className="button button-secondary" disabled={busy} onClick={onClose} type="button">Cancel</button>
+      )}
+      {loading ? <p>Loading projects…</p> : !error && projects.length === 0 ? <p>No cloud projects yet.</p> : (
+        <div className="stack">
+          {projects.map((project) => (
+            <button className="button button-secondary" disabled={busy} key={project.id} onClick={() => void open(project.id)} type="button">
+              {project.name}
+            </button>
+          ))}
         </div>
-      </section>
-    </div>
+      )}
+      <input ref={fileInput} accept=".json,application/json" hidden onChange={(event) => void importFile(event)} type="file" />
+      <div className="button-row cloud-project-actions">
+        <button className="button button-secondary" disabled={busy || loading} onClick={() => fileInput.current?.click()} type="button">Import project JSON</button>
+        {currentProject && <button className="button button-secondary" disabled={busy} onClick={onClose} type="button">Return to project</button>}
+      </div>
+    </section>
   );
 }
 

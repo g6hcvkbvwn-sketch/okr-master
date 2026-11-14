@@ -12,7 +12,9 @@ OneDrive backup and restore have all been verified. The desktop app remains
 independent and uses local project files.
 
 The web app stores multiple shared projects in D1. All users allowed through
-Cloudflare Access can open and edit all projects. The Worker verifies the
+Cloudflare Access can open and edit all projects. Existing cloud projects are
+listed on the workspace screen; choose **Open project** while editing to
+return to that list. The Worker verifies the
 Access JWT for every request, including static assets, and refuses requests
 when Access configuration is missing. Writes use project revisions to detect
 concurrent edits. On a conflict, download the unsaved project before

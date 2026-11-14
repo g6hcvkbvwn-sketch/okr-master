@@ -389,6 +389,7 @@ export function App() {
         }
         setView("People");
         setCreateFormOpen(false);
+        setCloudProjectsOpen(false);
         setProjectName("");
         setProjectDescription("");
       }
@@ -705,18 +706,22 @@ export function App() {
           {NAV_ITEMS.filter(({ view: destination }) => !isCloud || destination !== "Publishing").map(({ view: destination, label }) => {
             const unavailable =
               !project ||
+              (isCloud && cloudProjectsOpen && isWorking) ||
               ((destination === "Current Cycle" || destination === "Review") &&
                 activeCycle?.status !== "active") ||
               (destination === "Planning" && activeCycle?.status === "active");
             return (
               <button
-                aria-current={project && view === destination ? "page" : undefined}
+                aria-current={project && !cloudProjectsOpen && view === destination ? "page" : undefined}
                 className={
-                  project && view === destination ? "nav-item selected" : "nav-item"
+                  project && !cloudProjectsOpen && view === destination ? "nav-item selected" : "nav-item"
                 }
                 disabled={unavailable}
                 key={destination}
-                onClick={() => setView(destination)}
+                onClick={() => {
+                  setCloudProjectsOpen(false);
+                  setView(destination);
+                }}
                 title={
                   destination === "Planning" && activeCycle?.status === "active"
                     ? "Planning opens after submitting the active cycle's review."
@@ -752,10 +757,14 @@ export function App() {
           </div>
         )}
 
-        {!project ? (
+        {!project || (isCloud && cloudProjectsOpen) ? (
           <section className="card welcome-card">
-            <img alt="" className="welcome-logo" src={logoUrl} />
-            <p className="eyebrow">YOUR NEXT STEP</p>
+            {!isCloud && (
+              <>
+                <img alt="" className="welcome-logo" src={logoUrl} />
+                <p className="eyebrow">YOUR NEXT STEP</p>
+              </>
+            )}
             <h2>Your OKR workspace</h2>
             <p>
               {isCloud ? "Create a shared cloud project or open or import an existing project." : <>Create a local project file or open an existing <code>project.json</code> to begin.</>}
@@ -763,20 +772,37 @@ export function App() {
             <div className="button-row">
               <button
                 className="button button-primary"
+                disabled={isWorking}
                 onClick={() => setCreateFormOpen(true)}
                 type="button"
               >
                 Create project
               </button>
-              <button
-                className="button button-secondary"
-                disabled={isWorking}
-                onClick={() => void openExistingProject()}
-                type="button"
-              >
-                Open project
-              </button>
+              {!isCloud && (
+                <button
+                  className="button button-secondary"
+                  disabled={isWorking}
+                  onClick={() => void openExistingProject()}
+                  type="button"
+                >
+                  Open project
+                </button>
+              )}
             </div>
+            {isCloud && (
+              <CloudProjects
+                currentProject={project}
+                onBusyChange={setIsWorking}
+                onClose={() => setCloudProjectsOpen(false)}
+                onSelect={(selected) => {
+                  installProject(selected);
+                  setFileName(null);
+                  setRecoveryMessage("");
+                  setView(selected.currentCycleId ? "Current Cycle" : "Planning");
+                  setCloudProjectsOpen(false);
+                }}
+              />
+            )}
           </section>
         ) : (
           <>
@@ -1498,19 +1524,6 @@ export function App() {
         )}
       </main>
 
-      {cloudProjectsOpen && (
-        <CloudProjects
-          currentProject={project}
-          onClose={() => setCloudProjectsOpen(false)}
-          onSelect={(selected) => {
-            installProject(selected);
-            setFileName(null);
-            setRecoveryMessage("");
-            setView(selected.currentCycleId ? "Current Cycle" : "Planning");
-            setCloudProjectsOpen(false);
-          }}
-        />
-      )}
       {cloudBackupOpen && (
         <CloudBackup
           project={project}
@@ -1518,6 +1531,7 @@ export function App() {
           onRestore={(restored) => {
             installProject(restored);
             setView(restored.currentCycleId ? "Current Cycle" : "Planning");
+            setCloudProjectsOpen(false);
             setCloudBackupOpen(false);
           }}
         />

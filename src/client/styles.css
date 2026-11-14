@@ -2456,6 +2456,20 @@ details[open] > summary .disclosure-chevron {
   font-size: 22px;
 }
 
+.cloud-projects {
+  width: min(470px, 100%);
+  margin-top: 28px;
+}
+
+.cloud-projects h3 {
+  margin: 0;
+}
+
+.cloud-project-actions {
+  justify-content: center;
+  margin-top: 18px;
+}
+
 .app-footer {
   display: flex;
   justify-content: space-between;
