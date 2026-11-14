@@ -255,14 +255,26 @@ describe("cloud reminders", () => {
     }), { DB: env.DB })).status).toBe(400);
   });
 
-  it("only sends a test email to the configured mailbox after an authorized request", async () => {
+  it("sends a test email to the selected project member and rejects invalid recipients", async () => {
     const { env, project } = await setup();
     const endpoint = `https://okr.example/api/notifications/${project.id}/test`;
     const send = vi.fn(async (_env: NotificationEnvironment, _email: { recipient: string; subject: string; text: string }) => {});
-    expect((await handleNotificationApi(new Request(endpoint, { method: "POST", headers: { Origin: "https://evil.example" } }), env, send)).status).toBe(403);
+    const request = (recipientId: string, origin = "https://okr.example") => new Request(endpoint, {
+      method: "POST", headers: { Origin: origin }, body: JSON.stringify({ recipientId }),
+    });
+    expect((await handleNotificationApi(request(project.users[0]!.id, "https://evil.example"), env, send)).status).toBe(403);
+    expect((await handleNotificationApi(request(crypto.randomUUID()), env, send)).status).toBe(400);
+    expect((await handleNotificationApi(new Request(endpoint, {
+      method: "POST", headers: { Origin: "https://okr.example" },
+      body: JSON.stringify({ recipientId: project.users[0]!.id, email: "other@example.com" }),
+    }), env, send)).status).toBe(400);
     expect(send).not.toHaveBeenCalled();
+    const response = await handleNotificationApi(request(project.users[0]!.id), env, send);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ sent: true, recipient: "alex@example.com" });
+    expect(send.mock.calls[0]?.[1].recipient).toBe("alex@example.com");
     expect((await handleNotificationApi(new Request(endpoint, { method: "POST", headers: { Origin: "https://okr.example" } }), env, send)).status).toBe(200);
-    expect(send.mock.calls[0]?.[1].recipient).toBe("okr@example.com");
+    expect(send.mock.calls[1]?.[1].recipient).toBe("okr@example.com");
   });
 
   it("still runs notifications when the scheduled backup fails", async () => {

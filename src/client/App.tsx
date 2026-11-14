@@ -1554,7 +1554,7 @@ export function App() {
         />
       )}
       {cloudNotificationsOpen && project && (
-        <CloudNotifications projectId={project.id} onClose={() => setCloudNotificationsOpen(false)} />
+        <CloudNotifications projectId={project.id} users={project.users} onClose={() => setCloudNotificationsOpen(false)} />
       )}
 
       {createFormOpen && (

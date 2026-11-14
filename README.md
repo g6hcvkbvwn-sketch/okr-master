@@ -53,7 +53,7 @@ Europe/Zurich, including daylight-saving changes. Delays or outages can
 delay delivery; a due reminder is only eligible on the day before its target
 date. Failures are retried after one hour while the reminder is still
 eligible. The settings dialog shows the latest delivery status, and its test
-button sends only to the configured sender mailbox. SMTP acceptance does not
+button sends to a selected project team member. SMTP acceptance does not
 guarantee delivery; check spam and the receiving server. A crash or timeout
 after SMTP acceptance but before the delivery is recorded can cause a
 duplicate email. Changing project data or settings while an email is already
@@ -79,8 +79,8 @@ To enable the feature on an existing deployment:
    permit authenticated SMTP on port 465 with implicit TLS. Never put the
    password in source control or chat. Save/deploy the configuration as
    required by the Cloudflare dashboard.
-4. Open a test project, choose **Reminders**, and send a test email to the
-   configured mailbox. Only after confirming receipt, enable the desired
+4. Open a test project, choose **Reminders**, select a team member, and send a
+   test email. Only after confirming receipt, enable the desired
    rules and save. Investigate SMTP configuration and Worker logs if the
    test fails; live connectivity depends on the mail provider.
 

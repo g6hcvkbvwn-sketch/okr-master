@@ -38,6 +38,21 @@ interface Reminder {
   text: string;
 }
 
+class NotificationInputError extends Error {}
+
+async function jsonBody(request: Request): Promise<unknown> {
+  if (Number(request.headers.get("Content-Length")) > 10_000) {
+    throw new NotificationInputError("Notification request is too large.");
+  }
+  const bytes = await request.arrayBuffer();
+  if (bytes.byteLength > 10_000) throw new NotificationInputError("Notification request is too large.");
+  try {
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
+  } catch {
+    throw new NotificationInputError("The request is not valid JSON.");
+  }
+}
+
 type SendEmail = (env: NotificationEnvironment, email: Pick<Reminder, "recipient" | "subject" | "text">) => Promise<void>;
 
 const TWO_WEEKS = 14 * 24 * 60 * 60;
@@ -132,20 +147,7 @@ export async function handleNotificationApi(request: Request, env: NotificationE
     if (request.method === "GET" && !match[2]) return Response.json(status(current, env), { headers: { "Cache-Control": "no-store" } });
 
     if (request.method === "PUT" && !match[2]) {
-      if (Number(request.headers.get("Content-Length")) > 10_000) {
-        return Response.json({ error: "Notification settings are too large." }, { status: 400 });
-      }
-      let raw: unknown;
-      const bytes = await request.arrayBuffer();
-      if (bytes.byteLength > 10_000) {
-        return Response.json({ error: "Notification settings are too large." }, { status: 400 });
-      }
-      try {
-        raw = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)) as unknown;
-      } catch {
-        return Response.json({ error: "The request is not valid JSON." }, { status: 400 });
-      }
-      const input = NotificationSettingsUpdateSchema.parse(raw);
+      const input = NotificationSettingsUpdateSchema.parse(await jsonBody(request));
       if (input.enabled && !smtpConfigured(env)) {
         return Response.json({ error: "Configure SMTP before enabling reminders." }, { status: 400 });
       }
@@ -161,10 +163,20 @@ export async function handleNotificationApi(request: Request, env: NotificationE
       if (!smtpConfigured(env) || !env.SMTP_USERNAME) {
         return Response.json({ error: "Configure SMTP before sending a test email." }, { status: 400 });
       }
+      let recipient = env.SMTP_USERNAME;
+      if (request.body !== null) {
+        const { recipientId } = z.object({ recipientId: UUIDSchema }).strict().parse(await jsonBody(request));
+        const row = await env.DB.prepare("SELECT data FROM projects WHERE id = ?").bind(projectId).first<{ data: string }>();
+        if (!row) return Response.json({ error: "Project not found." }, { status: 404 });
+        const project = parseProject(JSON.parse(row.data) as unknown);
+        const user = project.users.find((item) => item.id === recipientId);
+        if (!user) return Response.json({ error: "The selected team member is no longer in this project. Reopen the project and try again." }, { status: 400 });
+        recipient = user.email;
+      }
       const now = Math.floor(Date.now() / 1000);
       try {
         await send(env, {
-          recipient: env.SMTP_USERNAME,
+          recipient,
           subject: "OKR Master test email",
           text: "This is a test of the OKR Master reminder email connection.",
         });
@@ -174,11 +186,12 @@ export async function handleNotificationApi(request: Request, env: NotificationE
         return Response.json({ error: SEND_ERROR }, { status: 502 });
       }
       await recordAttempt(env.DB, projectId, now, null);
-      return Response.json({ sent: true }, { headers: { "Cache-Control": "no-store" } });
+      return Response.json({ sent: true, recipient }, { headers: { "Cache-Control": "no-store" } });
     }
     return Response.json({ error: "Method not supported." }, { status: 405 });
   } catch (error) {
     if (error instanceof ZodError) return Response.json({ error: "Invalid notification settings." }, { status: 400 });
+    if (error instanceof NotificationInputError) return Response.json({ error: error.message }, { status: 400 });
     console.error("Notification request failed.");
     return Response.json({ error: "Notification request failed. Check the server logs and database setup." }, { status: 500 });
   }

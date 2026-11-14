@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { NotificationStatusSchema } from "../shared/notification-schemas";
+import type { User } from "../shared/types";
 
 type Status = z.infer<typeof NotificationStatusSchema>;
 
@@ -19,14 +20,16 @@ async function request(path: string, options?: RequestInit): Promise<unknown> {
   return value;
 }
 
-export function CloudNotifications({ projectId, onClose }: {
+export function CloudNotifications({ projectId, users, onClose }: {
   projectId: string;
+  users: User[];
   onClose: () => void;
 }) {
   const [status, setStatus] = useState<Status | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [recipientId, setRecipientId] = useState("");
   const endpoint = `/api/notifications/${encodeURIComponent(projectId)}`;
 
   useEffect(() => {
@@ -68,8 +71,13 @@ export function CloudNotifications({ projectId, onClose }: {
     setMessage("");
     let accepted = false;
     try {
-      await request(`${endpoint}/test`, { method: "POST" });
+      const result = await request(`${endpoint}/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientId }),
+      });
       accepted = true;
+      const { recipient } = z.object({ sent: z.literal(true), recipient: z.email() }).parse(result);
       const updated = NotificationStatusSchema.parse(await request(endpoint));
       setStatus((current) => current ? {
         ...current,
@@ -78,7 +86,7 @@ export function CloudNotifications({ projectId, onClose }: {
         lastSuccess: updated.lastSuccess,
         lastError: updated.lastError,
       } : updated);
-      setMessage("Test email accepted by the mail server. Check the configured mailbox, including spam.");
+      setMessage(`Test email accepted by the mail server for ${recipient}. Check that inbox and its spam folder.`);
     } catch (caught) {
       setError(accepted ? `The test email was accepted, but status could not be refreshed: ${errorText(caught)}` : errorText(caught));
     } finally {
@@ -116,8 +124,15 @@ export function CloudNotifications({ projectId, onClose }: {
             <p>Completed initiatives are excluded. Cloud project changes reset the inactivity timer.</p>
             {status.lastSuccess && <p>Last successful email: {new Date(status.lastSuccess).toLocaleString()}</p>}
             {status.lastError && <div className="notice notice-warning" role="alert">{status.lastError}</div>}
+            <label className="field">
+              <span>Test email recipient</span>
+              <select disabled={busy || users.length === 0} onChange={(event) => setRecipientId(event.target.value)} value={recipientId}>
+                <option value="">{users.length ? "Select a team member" : "Add a team member first"}</option>
+                {users.map((user) => <option key={user.id} value={user.id}>{user.name} ({user.email}){user.active ? "" : " — inactive"}</option>)}
+              </select>
+            </label>
             <div className="button-row modal-actions">
-              <button className="button button-secondary" disabled={busy || !status.configured} onClick={() => void sendTest()} type="button">Send test to configured mailbox</button>
+              <button className="button button-secondary" disabled={busy || !status.configured || !recipientId} onClick={() => void sendTest()} type="button">Send test email</button>
               <button className="button button-primary" disabled={busy} onClick={() => void save()} type="button">Save settings</button>
             </div>
           </>
