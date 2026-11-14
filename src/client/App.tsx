@@ -10,6 +10,8 @@ import {
 import { CurrentCycle } from "./CurrentCycle";
 import { History } from "./History";
 import { Publishing } from "./Publishing";
+import { CloudProjects } from "./CloudProjects";
+import { CloudBackup } from "./CloudBackup";
 import { UserAvatar } from "./OwnerBadge";
 import { ProgressBadge } from "./ProgressBadge";
 import { Review } from "./Review";
@@ -29,7 +31,7 @@ import {
   calculateNextCycleStartMonth,
   getCurrentLocalMonth,
 } from "../domain/cycles";
-import { api } from "./api";
+import { api, isCloud } from "./api";
 import type {
   Cadence,
   KeyResultDraft,
@@ -112,6 +114,8 @@ export function App() {
   const [publishBusy, setPublishBusy] = useState(false);
   const [isWorking, setIsWorking] = useState(false);
   const [createFormOpen, setCreateFormOpen] = useState(false);
+  const [cloudProjectsOpen, setCloudProjectsOpen] = useState(false);
+  const [cloudBackupOpen, setCloudBackupOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [operationError, setOperationError] = useState("");
@@ -153,6 +157,10 @@ export function App() {
   }, [installProject]);
 
   useEffect(() => {
+    if (isCloud) {
+      setPublishSettingsLoading(false);
+      return;
+    }
     let mounted = true;
     api
       .getViewerPublishSettings()
@@ -371,9 +379,14 @@ export function App() {
       });
       if (created) {
         installProject(created);
-        const session = await api.getSession();
-        setFileName(session.fileName);
-        setRecoveryMessage(session.recoveryMessage ?? "");
+        if (isCloud) {
+          setFileName(null);
+          setRecoveryMessage("");
+        } else {
+          const session = await api.getSession();
+          setFileName(session.fileName);
+          setRecoveryMessage(session.recoveryMessage ?? "");
+        }
         setView("People");
         setCreateFormOpen(false);
         setProjectName("");
@@ -391,6 +404,10 @@ export function App() {
     setOperationError("");
     try {
       await flushPendingChanges();
+      if (isCloud) {
+        setCloudProjectsOpen(true);
+        return;
+      }
       const opened = await api.openProject();
       if (opened) {
         installProject(opened);
@@ -399,11 +416,36 @@ export function App() {
         setRecoveryMessage(session.recoveryMessage ?? "");
         setView(opened.currentCycleId ? "Current Cycle" : "Planning");
       }
+
     } catch (error) {
       setOperationError(errorText(error));
     } finally {
       setIsWorking(false);
     }
+  }
+
+  async function openCloudBackup() {
+    setIsWorking(true);
+    try {
+      await flushPendingChanges();
+      setCloudBackupOpen(true);
+    } catch (error) {
+      setOperationError(errorText(error));
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
+  function downloadProject() {
+    const current = projectRef.current;
+    if (!current) return;
+    const blob = new Blob([JSON.stringify(current, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "okr-project.json";
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   async function activateCycle() {
@@ -616,11 +658,14 @@ export function App() {
             <img alt="" className="brand-logo" src={logoUrl} />
             <span>
               <strong>OKR Master</strong>
-              <small>{project?.name ?? "Private, local planning"}</small>
+              <small>{project?.name ?? (isCloud ? "Shared cloud planning" : "Private, local planning")}</small>
               <small className="app-version">{__APP_VERSION__}</small>
             </span>
           </div>
           <div className="header-actions">
+            {isCloud && (
+              <button className="button button-secondary" disabled={isWorking} onClick={() => void openCloudBackup()} type="button">Backups</button>
+            )}
             {project && (
               <SaveIndicator
                 onSaveNow={() => void saveChangesNow()}
@@ -628,6 +673,11 @@ export function App() {
               />
             )}
             {fileName && <span className="file-label">{fileName}</span>}
+            {isCloud && project && (
+              <button className="button button-secondary" onClick={downloadProject} type="button">
+                Download project
+              </button>
+            )}
             {project && (
               <>
                 <button
@@ -652,7 +702,7 @@ export function App() {
         </header>
 
         <nav className="primary-nav" aria-label="Primary navigation">
-          {NAV_ITEMS.map(({ view: destination, label }) => {
+          {NAV_ITEMS.filter(({ view: destination }) => !isCloud || destination !== "Publishing").map(({ view: destination, label }) => {
             const unavailable =
               !project ||
               ((destination === "Current Cycle" || destination === "Review") &&
@@ -687,6 +737,15 @@ export function App() {
             {loadError || operationError}
           </div>
         )}
+        {isCloud && project && saveStatus === "failed" && (
+          <div className="notice notice-warning" role="alert">
+            Your changes may not be saved. Download the project before reloading; reloading discards unsaved changes.
+            {" "}<button className="button button-secondary" onClick={downloadProject} type="button">Download unsaved project</button>
+            {" "}<button className="button button-secondary" onClick={() => {
+              if (window.confirm("Reload the cloud project and discard unsaved changes? Download them first if needed.")) window.location.reload();
+            }} type="button">Reload cloud project</button>
+          </div>
+        )}
         {recoveryMessage && (
           <div className="notice notice-warning" role="status">
             {recoveryMessage}
@@ -699,8 +758,7 @@ export function App() {
             <p className="eyebrow">YOUR NEXT STEP</p>
             <h2>Your OKR workspace</h2>
             <p>
-              Create a local project file or open an existing
-              <code> project.json</code> to begin.
+              {isCloud ? "Create a shared cloud project or open or import an existing project." : <>Create a local project file or open an existing <code>project.json</code> to begin.</>}
             </p>
             <div className="button-row">
               <button
@@ -1440,6 +1498,31 @@ export function App() {
         )}
       </main>
 
+      {cloudProjectsOpen && (
+        <CloudProjects
+          currentProject={project}
+          onClose={() => setCloudProjectsOpen(false)}
+          onSelect={(selected) => {
+            installProject(selected);
+            setFileName(null);
+            setRecoveryMessage("");
+            setView(selected.currentCycleId ? "Current Cycle" : "Planning");
+            setCloudProjectsOpen(false);
+          }}
+        />
+      )}
+      {cloudBackupOpen && (
+        <CloudBackup
+          project={project}
+          onClose={() => setCloudBackupOpen(false)}
+          onRestore={(restored) => {
+            installProject(restored);
+            setView(restored.currentCycleId ? "Current Cycle" : "Planning");
+            setCloudBackupOpen(false);
+          }}
+        />
+      )}
+
       {createFormOpen && (
         <div className="modal-backdrop" role="presentation">
           <form
@@ -1462,8 +1545,7 @@ export function App() {
               </button>
             </div>
             <p className="muted">
-              Choose a name and short description. Safari will then open a
-              native dialog to choose where to save your project.json file.
+              {isCloud ? "Choose a name and short description for the shared project." : "Choose a name and short description. Safari will then open a native dialog to choose where to save your project.json file."}
             </p>
             <label className="field">
               <span>Project name</span>
@@ -1495,7 +1577,7 @@ export function App() {
                 disabled={isWorking}
                 type="submit"
               >
-                {isWorking ? "Choose file…" : "Choose project file"}
+                {isWorking ? "Creating…" : isCloud ? "Create cloud project" : "Choose project file"}
               </button>
             </div>
           </form>

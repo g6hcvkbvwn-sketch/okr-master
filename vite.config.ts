@@ -4,7 +4,7 @@ import { appVersion } from "./vite-app-version";
 
 const apiPort = process.env.PORT ?? "4178";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
@@ -22,6 +22,6 @@ export default defineConfig({
     include: ["src/**/*.test.ts"],
   },
   build: {
-    outDir: "dist",
+    outDir: mode === "cloud" ? "dist-cloud" : "dist",
   },
-});
+}));

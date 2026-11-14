@@ -2,6 +2,9 @@ import type {
   CreateProjectRequest,
   UserInput,
 } from "../shared/schemas";
+import { cloudApi } from "./cloud-api";
+
+export const isCloud = import.meta.env.MODE === "cloud";
 import {
   ProjectSchema,
   ReviewSubmissionSchema,
@@ -52,7 +55,7 @@ async function request<Schema extends z.ZodTypeAny>(
   return schema.parse(result);
 }
 
-export const api = {
+const localApi = {
   getSession(): Promise<SessionState> {
     return request("/api/session", SessionStateSchema).then((value) => {
       if (!value) throw new Error("The server returned an empty session.");
@@ -209,6 +212,8 @@ export const api = {
     }).then(requireProjectResponse);
   },
 };
+
+export const api: typeof localApi = isCloud ? cloudApi : localApi;
 
 function requireProjectResponse(value: Project | null): Project {
   if (!value) throw new Error("The server returned no updated project.");

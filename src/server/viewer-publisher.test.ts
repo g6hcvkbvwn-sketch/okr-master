@@ -1,5 +1,5 @@
 import { execFile as nodeExecFile } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
@@ -110,8 +110,10 @@ describe("viewer publishing", () => {
     directory = await mkdtemp(join(tmpdir(), "okr-viewer-git-"));
     const repository = join(directory, "repo");
     const remote = join(directory, "remote.git");
-    const outputDirectory = join(repository, "viewer");
+    const publishedRepository = process.platform === "win32" ? repository : join(directory, "repo-link");
+    const outputDirectory = join(publishedRepository, "viewer");
     await mkdir(repository);
+    if (publishedRepository !== repository) await symlink(repository, publishedRepository, "dir");
     await mkdir(outputDirectory);
     await execFile("git", ["init", "--bare", remote], { windowsHide: true });
     await execFile("git", ["init", "--initial-branch=main"], {

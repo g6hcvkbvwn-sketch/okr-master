@@ -3,6 +3,49 @@
 A local desktop OKR planner. Project information is stored in one
 human-readable `project.json` file selected by the user.
 
+## Cloud work in progress
+
+The cloud editor, Cloudflare Worker and OneDrive backup flow are implemented
+and tested locally, but are **not deployed or verified end-to-end**. Do not
+import real project data until Access, the production database, and a
+OneDrive backup and restore have all been verified. The desktop app remains
+independent and uses local project files.
+
+The web app stores multiple shared projects in D1. All users allowed through
+Cloudflare Access can open and edit all projects. The Worker verifies the
+Access JWT for every request, including static assets, and refuses requests
+when Access configuration is missing. Writes use project revisions to detect
+concurrent edits. On a conflict, download the unsaved project before
+reloading; changes are not automatically merged.
+
+Cloud and desktop project files are separate copies, not automatic offline
+sync. Import a JSON project into the web app, or download a project JSON file
+from the web app for desktop use. To import an offline copy of an existing
+cloud project, open that project first and confirm replacement; the revision
+check prevents overwriting changes made since it was opened. Importing does not
+merge changes. Desktop viewer publishing remains available in the desktop app
+only.
+
+OneDrive backups contain every cloud project as plaintext JSON in the
+dedicated Microsoft app folder. The refresh token is encrypted in D1.
+The Worker checks for changes every five minutes and creates a new file when
+a backup is pending; old backups are not automatically deleted. The app
+reports backup status and allows restoring one project at a time from a
+downloaded backup. Restoring an existing project replaces it only if its
+revision has not changed since opening it. Backups do not include local
+desktop files.
+
+For local development, `npm run build:cloud` builds the web assets into
+`dist-cloud/`; `npx wrangler deploy --dry-run` checks the Worker bundle.
+`src/cloud/schema.sql` defines the D1 schema. Production requires the
+Worker's runtime variables `ACCESS_TEAM_URL` and `ACCESS_AUD`, as well as a
+separate Microsoft app registration and the runtime variables
+`ONEDRIVE_CLIENT_ID`, `ONEDRIVE_REDIRECT_URI`, `ONEDRIVE_CLIENT_SECRET`, and
+`BACKUP_ENCRYPTION_KEY`. Store the client secret and encryption key as
+Cloudflare secrets, never in the repository. Preview URLs must remain disabled
+or independently protected, and both allowed users and unauthenticated access
+must be tested before using real data.
+
 ## Use a packaged app
 
 ### Windows

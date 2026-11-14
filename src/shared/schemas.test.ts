@@ -4,7 +4,36 @@ import {
   ActiveKeyResultInputSchema,
   InitiativeInputSchema,
   KeyResultSchema,
+  ViewerPublishSettingsSchema,
 } from "./schemas";
+import { createProject, parseProject } from "../domain/project";
+
+describe("project compatibility", () => {
+  it("continues to accept previously valid project identifiers", () => {
+    const project = createProject({ name: "Existing project" });
+    const legacyId = "12345678-1234-1234-1234-123456789abc";
+    expect(parseProject({ ...project, id: legacyId }).id).toBe(legacyId);
+  });
+
+  it("continues to read publication settings with minute-precision timestamps", () => {
+    const settings = {
+      directory: "/viewer",
+      publishOnClose: false,
+      lastPublishedFingerprint: null,
+      lastPublishedPath: null,
+      lastPublishedAt: "2026-01-01T00:00Z",
+    };
+    expect(ViewerPublishSettingsSchema.parse(settings).lastPublishedAt).toBe(
+      settings.lastPublishedAt,
+    );
+    expect(
+      ViewerPublishSettingsSchema.safeParse({
+        ...settings,
+        lastPublishedAt: "not-a-timestamp",
+      }).success,
+    ).toBe(false);
+  });
+});
 
 describe("optional OKR descriptions", () => {
   it("defaults an omitted Key Result description in active and persisted data", () => {

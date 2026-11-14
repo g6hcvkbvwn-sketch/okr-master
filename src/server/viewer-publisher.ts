@@ -2,11 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import {
   open,
   readFile,
+  realpath,
   rename,
   rm,
   stat,
 } from "node:fs/promises";
-import { dirname, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import { execFile as nodeExecFile } from "node:child_process";
 import { promisify } from "node:util";
 import { ViewerSnapshotSchema } from "../shared/schemas";
@@ -224,7 +225,10 @@ export class ViewerPublisher {
       );
     }
     repositoryRoot = repositoryRoot.trim();
-    const relativePath = relativeGitPath(repositoryRoot, outputPath);
+    const relativePath = relativeGitPath(
+      await realpath(repositoryRoot),
+      await realpath(outputPath),
+    );
     if (!relativePath) {
       throw new Error("The viewer file must be inside the Git repository.");
     }
@@ -376,8 +380,9 @@ function relativeGitPath(repositoryRoot: string, outputPath: string): string | n
   if (
     !relativePath ||
     filePath === root ||
-    (filePath.toLowerCase() !== root.toLowerCase() &&
-      !filePath.toLowerCase().startsWith(`${root.toLowerCase()}${sep}`))
+    relativePath === ".." ||
+    relativePath.startsWith(`..${sep}`) ||
+    isAbsolute(relativePath)
   ) {
     return null;
   }

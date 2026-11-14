@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const UUIDSchema = z.string().uuid();
+export const UUIDSchema = z.guid();
 export const CadenceSchema = z.enum(["monthly", "quarterly", "yearly"]);
 export const MetricTypeSchema = z.enum([
   "number_target",
@@ -9,6 +9,10 @@ export const MetricTypeSchema = z.enum([
 ]);
 
 const RequiredTextSchema = z.string().trim().min(1, "This field is required.");
+const DateTimeSchema = z.union([
+  z.iso.datetime(),
+  z.iso.datetime({ precision: -1 }),
+]);
 
 export const UserSchema = z
   .object({
@@ -285,7 +289,7 @@ export const ViewerSnapshotSchema = z
   .object({
     snapshotVersion: z.literal(1),
     schemaVersion: z.literal(1),
-    generatedAt: z.string().datetime(),
+    generatedAt: DateTimeSchema,
     projectName: RequiredTextSchema,
     project: ViewerProjectSchema,
   })
@@ -299,14 +303,14 @@ export const ViewerPublishSettingsSchema = z
     publishOnClose: z.boolean(),
     lastPublishedFingerprint: z.string().nullable(),
     lastPublishedPath: z.string().nullable(),
-    lastPublishedAt: z.string().datetime().nullable(),
+    lastPublishedAt: DateTimeSchema.nullable(),
   })
   .strict();
 
 export const ViewerPublishResultSchema = z
   .object({
     path: z.string(),
-    publishedAt: z.string().datetime().nullable(),
+    publishedAt: DateTimeSchema.nullable(),
     published: z.boolean(),
     message: RequiredTextSchema,
   })
