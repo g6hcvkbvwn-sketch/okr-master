@@ -1,0 +1,7 @@
+node_modules/
+dist/
+dist-electron/
+dist-viewer/
+release/
+.DS_Store
+rfc.md

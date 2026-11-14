@@ -1,0 +1,117 @@
+{
+  "id": "d7b8d2dc-30f0-4bbf-a97c-4431f0f9af75",
+  "name": "Sample OKR Project",
+  "description": "An example active cycle for exploring the Local OKR Planner.",
+  "schemaVersion": 1,
+  "cadence": "quarterly",
+  "currentCycleId": "92eaed32-cacc-4c59-9bce-688e06a81bfc",
+  "users": [
+    {
+      "id": "08ca7855-2073-4896-b716-5244189e2f9c",
+      "name": "Alex Morgan",
+      "email": "alex@example.com",
+      "active": true
+    },
+    {
+      "id": "981365ac-6253-4baa-8d7c-67ba2768e3e5",
+      "name": "Taylor Reed",
+      "email": "taylor@example.com",
+      "active": true
+    }
+  ],
+  "companyGoals": [
+    {
+      "id": "2b2d80e4-17cb-4f51-ac13-e3797e548fd2",
+      "cycleId": "92eaed32-cacc-4c59-9bce-688e06a81bfc",
+      "title": "Grow sustainably",
+      "description": "Build durable customer and revenue growth.",
+      "priority": 1
+    }
+  ],
+  "cycles": [
+    {
+      "id": "92eaed32-cacc-4c59-9bce-688e06a81bfc",
+      "startMonth": "2026-10",
+      "endMonth": "2026-12",
+      "status": "active",
+      "cadence": "quarterly",
+      "planningFocus": "Help more customers succeed and stay with us.",
+      "companyGoalSnapshots": [],
+      "userSnapshots": [
+        {
+          "id": "08ca7855-2073-4896-b716-5244189e2f9c",
+          "name": "Alex Morgan",
+          "email": "alex@example.com"
+        },
+        {
+          "id": "981365ac-6253-4baa-8d7c-67ba2768e3e5",
+          "name": "Taylor Reed",
+          "email": "taylor@example.com"
+        }
+      ]
+    }
+  ],
+  "objectives": [
+    {
+      "id": "b920a5c3-baaa-4d4f-b7f3-ce028707a49b",
+      "cycleId": "92eaed32-cacc-4c59-9bce-688e06a81bfc",
+      "title": "Improve customer retention",
+      "description": "Make it easier for customers to achieve their goals.",
+      "ownerId": "08ca7855-2073-4896-b716-5244189e2f9c",
+      "companyGoalIds": [
+        "2b2d80e4-17cb-4f51-ac13-e3797e548fd2"
+      ],
+      "keyResultIds": [
+        "b5f8ed9f-7d8f-4a38-8c69-aaf40422a95d",
+        "f92cad1f-16ad-4a58-8b62-04029de5b3b5"
+      ]
+    }
+  ],
+  "keyResults": [
+    {
+      "id": "b5f8ed9f-7d8f-4a38-8c69-aaf40422a95d",
+      "objectiveId": "b920a5c3-baaa-4d4f-b7f3-ce028707a49b",
+      "title": "Increase retained customer rate",
+      "description": "Measure customers retained through the period.",
+      "ownerId": "08ca7855-2073-4896-b716-5244189e2f9c",
+      "metricType": "percentage_target",
+      "startValue": 50,
+      "currentValue": 62,
+      "targetValue": 74
+    },
+    {
+      "id": "f92cad1f-16ad-4a58-8b62-04029de5b3b5",
+      "objectiveId": "b920a5c3-baaa-4d4f-b7f3-ce028707a49b",
+      "title": "Complete onboarding improvements",
+      "description": "Finish the agreed onboarding improvements.",
+      "ownerId": "981365ac-6253-4baa-8d7c-67ba2768e3e5",
+      "metricType": "yes_no",
+      "value": false
+    }
+  ],
+  "initiatives": [
+    {
+      "id": "6b0f912f-787b-419f-8332-dde82e3ac211",
+      "keyResultId": "b5f8ed9f-7d8f-4a38-8c69-aaf40422a95d",
+      "title": "Interview recently churned customers",
+      "description": "Identify patterns in onboarding and early usage.",
+      "ownerId": "08ca7855-2073-4896-b716-5244189e2f9c",
+      "collaboratorIds": [
+        "981365ac-6253-4baa-8d7c-67ba2768e3e5"
+      ],
+      "priority": 1,
+      "targetDate": "2026-11-15",
+      "status": "in_progress",
+      "progress": 45
+    }
+  ],
+  "reviews": [],
+  "reviewDraft": {
+    "cycleId": "92eaed32-cacc-4c59-9bce-688e06a81bfc",
+    "successes": "",
+    "failures": "",
+    "lessonsLearned": "",
+    "nextActions": ""
+  },
+  "planningDraft": null
+}
