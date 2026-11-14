@@ -2505,6 +2505,15 @@ details[open] > summary .disclosure-chevron {
   box-shadow: 0 18px 60px rgb(25 35 55 / 22%);
 }
 
+.notification-card {
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.notification-backdrop {
+  z-index: 40;
+}
+
 .modal-card .muted {
   margin: -8px 0 17px;
 }

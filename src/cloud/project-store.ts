@@ -6,7 +6,7 @@ interface DatabaseResult {
 }
 
 interface DatabaseStatement {
-  bind(...values: (string | number)[]): DatabaseStatement;
+  bind(...values: (string | number | null)[]): DatabaseStatement;
   first<T>(): Promise<T | null>;
   all<T>(): Promise<{ results: T[] }>;
   run(): Promise<DatabaseResult>;

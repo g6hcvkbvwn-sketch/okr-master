@@ -2,8 +2,9 @@ import { hasAccess } from "./access";
 import { handleProjectApi } from "./api";
 import { CloudProjectStore, type CloudDatabase } from "./project-store";
 import { handleBackupApi, runPendingBackup, type BackupEnvironment } from "./onedrive";
+import { handleNotificationApi, runNotifications, type NotificationEnvironment } from "./notifications";
 
-export interface CloudEnvironment extends BackupEnvironment {
+export interface CloudEnvironment extends BackupEnvironment, NotificationEnvironment {
   DB: CloudDatabase;
   ASSETS: { fetch(request: Request): Promise<Response> };
   ACCESS_TEAM_URL?: string;
@@ -23,6 +24,7 @@ export default {
       return handleProjectApi(request, new CloudProjectStore(env.DB));
     }
     if (path.startsWith("/api/onedrive/")) return handleBackupApi(request, env);
+    if (path.startsWith("/api/notifications/")) return handleNotificationApi(request, env);
     if (path.startsWith("/api/")) {
       return Response.json({ error: "Not found." }, {
         status: 404,
@@ -36,6 +38,9 @@ export default {
     return response;
   },
   async scheduled(_controller: unknown, env: CloudEnvironment): Promise<void> {
-    await runPendingBackup(env);
+    const results = await Promise.allSettled([runPendingBackup(env), runNotifications(env)]);
+    if (results[0].status === "rejected") console.error("Scheduled backup failed.");
+    if (results[1].status === "rejected") console.error("Scheduled notifications failed.");
+    if (results.some((result) => result.status === "rejected")) throw new Error("A scheduled operation failed.");
   },
 };

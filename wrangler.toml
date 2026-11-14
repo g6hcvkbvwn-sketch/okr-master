@@ -1,6 +1,7 @@
 name = "okr-master"
 main = "src/cloud/worker.ts"
 compatibility_date = "2026-11-12"
+compatibility_flags = ["nodejs_compat"]
 keep_vars = true
 preview_urls = false
 

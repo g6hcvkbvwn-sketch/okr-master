@@ -3,12 +3,11 @@
 A local desktop OKR planner. Project information is stored in one
 human-readable `project.json` file selected by the user.
 
-## Cloud work in progress
+## Cloud app
 
-The cloud editor, Cloudflare Worker and OneDrive backup flow are implemented
-and tested locally, but are **not deployed or verified end-to-end**. Do not
-import real project data until Access, the production database, and a
-OneDrive backup and restore have all been verified. The desktop app remains
+Verify Access, the production database, and a OneDrive backup and restore
+before relying on a deployment with real project data. New features should be
+tested in the target deployment after updating it. The desktop app remains
 independent and uses local project files.
 
 The web app stores multiple shared projects in D1. All users allowed through
@@ -36,6 +35,54 @@ reports backup status and allows restoring one project at a time from a
 downloaded backup. Restoring an existing project replaces it only if its
 revision has not changed since opening it. Backups do not include local
 desktop files.
+
+### Cloud email reminders
+
+Each cloud project has a **Reminders** button. Reminders are disabled by
+default; settings are shared with everyone who can access that project.
+The initiative rule emails the owner one calendar day before the target date
+for unfinished initiatives in the current active cycle. The inactivity rule
+emails active team members after 14 days without project changes and every
+14 days thereafter while the project remains unchanged. A change to the
+project resets that timer; saving identical project data does not. Existing
+projects start their inactivity timer when the notification schema is first
+applied. Notifications are not available in the offline desktop app.
+
+The Worker checks every five minutes and sends no earlier than 09:00
+Europe/Zurich, including daylight-saving changes. Delays or outages can
+delay delivery; a due reminder is only eligible on the day before its target
+date. Failures are retried after one hour while the reminder is still
+eligible. The settings dialog shows the latest delivery status, and its test
+button sends only to the configured sender mailbox. SMTP acceptance does not
+guarantee delivery; check spam and the receiving server. A crash or timeout
+after SMTP acceptance but before the delivery is recorded can cause a
+duplicate email. Changing project data or settings while an email is already
+being sent cannot cancel that email.
+
+Notification settings and delivery history are stored in D1, not in project
+JSON or OneDrive backups. After restoring to a new database, reconfigure
+reminders for each project; delivery history is not restored.
+
+To enable the feature on an existing deployment:
+
+1. Verify and download a current OneDrive project backup. Apply the updated
+   `src/cloud/schema.sql` to the existing D1 database **before deploying**
+   the updated Worker. The schema is designed to be repeatable and retains
+   existing project data and reminder settings:
+   `npx wrangler d1 execute okr-master --remote --file=src/cloud/schema.sql`
+2. Deploy the updated Worker and cloud assets using the project's existing
+   deployment workflow. The new reminders remain disabled until enabled for
+   each project.
+3. In the Worker's Cloudflare settings, configure `SMTP_HOST` as a text
+   variable (for example `psa15.webhoster.ag`), `SMTP_USERNAME` as the full
+   mailbox address, and `SMTP_PASSWORD` as a **secret**. The mailbox must
+   permit authenticated SMTP on port 465 with implicit TLS. Never put the
+   password in source control or chat. Save/deploy the configuration as
+   required by the Cloudflare dashboard.
+4. Open a test project, choose **Reminders**, and send a test email to the
+   configured mailbox. Only after confirming receipt, enable the desired
+   rules and save. Investigate SMTP configuration and Worker logs if the
+   test fails; live connectivity depends on the mail provider.
 
 For local development, `npm run build:cloud` builds the web assets into
 `dist-cloud/`; `npx wrangler deploy --dry-run` checks the Worker bundle.

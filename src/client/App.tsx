@@ -12,6 +12,7 @@ import { History } from "./History";
 import { Publishing } from "./Publishing";
 import { CloudProjects } from "./CloudProjects";
 import { CloudBackup } from "./CloudBackup";
+import { CloudNotifications } from "./CloudNotifications";
 import { UserAvatar } from "./OwnerBadge";
 import { ProgressBadge } from "./ProgressBadge";
 import { Review } from "./Review";
@@ -116,6 +117,7 @@ export function App() {
   const [createFormOpen, setCreateFormOpen] = useState(false);
   const [cloudProjectsOpen, setCloudProjectsOpen] = useState(false);
   const [cloudBackupOpen, setCloudBackupOpen] = useState(false);
+  const [cloudNotificationsOpen, setCloudNotificationsOpen] = useState(false);
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [operationError, setOperationError] = useState("");
@@ -437,6 +439,18 @@ export function App() {
     }
   }
 
+  async function openCloudNotifications() {
+    setIsWorking(true);
+    try {
+      await flushPendingChanges();
+      setCloudNotificationsOpen(true);
+    } catch (error) {
+      setOperationError(errorText(error));
+    } finally {
+      setIsWorking(false);
+    }
+  }
+
   function downloadProject() {
     const current = projectRef.current;
     if (!current) return;
@@ -666,6 +680,9 @@ export function App() {
           <div className="header-actions">
             {isCloud && (
               <button className="button button-secondary" disabled={isWorking} onClick={() => void openCloudBackup()} type="button">Backups</button>
+            )}
+            {isCloud && project && (
+              <button className="button button-secondary" disabled={isWorking} onClick={() => void openCloudNotifications()} type="button">Reminders</button>
             )}
             {project && (
               <SaveIndicator
@@ -1535,6 +1552,9 @@ export function App() {
             setCloudBackupOpen(false);
           }}
         />
+      )}
+      {cloudNotificationsOpen && project && (
+        <CloudNotifications projectId={project.id} onClose={() => setCloudNotificationsOpen(false)} />
       )}
 
       {createFormOpen && (
