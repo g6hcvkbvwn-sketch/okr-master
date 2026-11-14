@@ -60,10 +60,10 @@ export class CloudProjectStore {
   async create(input: unknown): Promise<StoredProject> {
     const project = parseProject(input);
     const result = await this.db.prepare(
-      "INSERT INTO projects (id, revision, data) VALUES (?, 1, ?) ON CONFLICT(id) DO NOTHING",
-    ).bind(project.id, JSON.stringify(project)).run();
-    if (result.meta.changes !== 1) throw new CloudProjectExistsError();
-    return { project, revision: 1 };
+      "INSERT INTO projects (id, revision, data) VALUES (?, 1, ?) ON CONFLICT(id) DO NOTHING RETURNING revision",
+    ).bind(project.id, JSON.stringify(project)).first<{ revision: number }>();
+    if (!result) throw new CloudProjectExistsError();
+    return { project, revision: result.revision };
   }
 
   async save(id: string, expectedRevision: number, input: unknown): Promise<StoredProject> {
@@ -73,10 +73,10 @@ export class CloudProjectStore {
     const project = parseProject(input);
     if (project.id !== id) throw new Error("Cannot replace a project with a different project.");
     const result = await this.db.prepare(
-      "UPDATE projects SET data = ?, revision = revision + 1 WHERE id = ? AND revision = ?",
-    ).bind(JSON.stringify(project), id, expectedRevision).run();
-    if (result.meta.changes !== 1) throw new CloudProjectConflictError();
-    return { project, revision: expectedRevision + 1 };
+      "UPDATE projects SET data = ?, revision = revision + 1 WHERE id = ? AND revision = ? RETURNING revision",
+    ).bind(JSON.stringify(project), id, expectedRevision).first<{ revision: number }>();
+    if (!result) throw new CloudProjectConflictError();
+    return { project, revision: result.revision };
   }
 }
 

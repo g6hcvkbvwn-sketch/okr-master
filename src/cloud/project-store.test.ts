@@ -35,7 +35,10 @@ function createStore() {
           return { results: statement.all(...values) as T[] };
         },
         async run() {
-          return { meta: { changes: Number(statement.run(...values).changes) } };
+          const before = Number(sqlite.prepare("SELECT total_changes() AS count").get()?.count);
+          statement.run(...values);
+          const after = Number(sqlite.prepare("SELECT total_changes() AS count").get()?.count);
+          return { meta: { changes: after - before } };
         },
       };
     },
