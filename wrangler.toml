@@ -5,6 +5,9 @@ compatibility_flags = ["nodejs_compat"]
 keep_vars = true
 preview_urls = false
 
+[vars]
+APP_BASE_URL = "https://okr-master.olivermartin.org"
+
 [assets]
 directory = "./dist-cloud"
 binding = "ASSETS"

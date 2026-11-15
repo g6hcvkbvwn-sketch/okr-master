@@ -575,6 +575,8 @@ button:disabled {
 .field textarea,
 .field select {
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 39px;
   padding: 9px 11px;
   border: 1px solid #dce2ea;
@@ -1691,6 +1693,13 @@ details[open] > summary .disclosure-chevron {
   align-items: flex-start;
 }
 
+.key-result-summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 13px;
+}
+
 .key-result-summary .disclosure-chevron {
   margin-top: 3px;
 }
@@ -1896,16 +1905,22 @@ details[open] > summary .disclosure-chevron {
 }
 
 .initiative-linked-result {
-  margin: 10px 0 6px !important;
-  padding-top: 8px;
-  border-top: 1px solid #edf0f4;
-  color: #536176 !important;
-  font-weight: 700;
+  display: grid;
+  gap: 3px;
+  margin: 8px 0;
+  font-size: 10px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
-.initiative-linked-result > span {
-  padding: 0 3px;
-  color: #9aa3b0;
+.initiative-linked-result dt {
+  color: var(--muted);
+}
+
+.initiative-linked-result dd {
+  margin: 0 0 4px;
+  color: #536176;
+  font-weight: 700;
 }
 
 .initiative-card-details {
@@ -2597,6 +2612,60 @@ details[open] > summary .disclosure-chevron {
 
   .card {
     padding: 18px;
+  }
+
+  .card.hierarchy-objective {
+    padding: 0;
+  }
+
+  .hierarchy-objective > .hierarchy-summary,
+  .key-result-summary {
+    display: grid;
+    grid-template-columns: 8px minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    padding: 14px;
+  }
+
+  .hierarchy-title,
+  .key-result-name {
+    grid-column: 2 / -1;
+    overflow-wrap: anywhere;
+  }
+
+  .hierarchy-summary > .owner-tag,
+  .key-result-summary-meta {
+    grid-column: 2;
+  }
+
+  .key-result-summary-meta {
+    grid-column: 2 / -1;
+  }
+
+  .hierarchy-summary > .progress-badge {
+    grid-column: 3;
+  }
+
+  .hierarchy-summary .owner-tag,
+  .key-result-summary-meta .owner-tag {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .hierarchy-body {
+    padding: 0 14px 14px;
+  }
+
+  .key-result-body {
+    padding: 0 12px 12px;
+  }
+
+  .initiative-row {
+    padding: 10px;
+  }
+
+  .initiative-row .initiative-form {
+    padding: 12px;
   }
 
   .cycle-summary {

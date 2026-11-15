@@ -35,6 +35,7 @@ interface CurrentCycleProps {
   project: Project;
   activeUsers: User[];
   onSave: SaveMutation;
+  initialView?: "okr" | "initiatives";
 }
 
 interface KeyResultFormState {
@@ -139,7 +140,7 @@ function initiativeInput(state: InitiativeFormState): InitiativeInput {
   };
 }
 
-export function CurrentCycle({ project, activeUsers, onSave }: CurrentCycleProps) {
+export function CurrentCycle({ project, activeUsers, onSave, initialView = "okr" }: CurrentCycleProps) {
   const cycle = project.cycles.find(
     (candidate) =>
       candidate.id === project.currentCycleId && candidate.status === "active",
@@ -178,7 +179,7 @@ export function CurrentCycle({ project, activeUsers, onSave }: CurrentCycleProps
     [activeKeyResultIds, project.initiatives],
   );
 
-  const [cycleView, setCycleView] = useState<"okr" | "initiatives">("okr");
+  const [cycleView, setCycleView] = useState<"okr" | "initiatives">(initialView);
   const [initiativeFilter, setInitiativeFilter] = useState<InitiativeFilter>({
     ...EMPTY_INITIATIVE_FILTER,
   });
@@ -516,11 +517,6 @@ export function CurrentCycle({ project, activeUsers, onSave }: CurrentCycleProps
                             : "Edit"}
                         </button>
                       </div>
-                      <p className="initiative-linked-result">
-                        {parentObjective?.title ?? "Unknown Objective"}{" "}
-                        <span>›</span>{" "}
-                        {linkedKeyResult?.title ?? "Unknown Key Result"}
-                      </p>
                       <div className="initiative-board-meta">
                         <span>
                           Owner: {displayUser(project.users, initiative.ownerId)}
@@ -533,37 +529,41 @@ export function CurrentCycle({ project, activeUsers, onSave }: CurrentCycleProps
                         progress={initiative.progress}
                         compact
                       />
-                      {boardEdit?.initiativeId !== initiative.id && (
-                        <details className="initiative-card-details">
-                          <summary>
-                            Details
-                            {initiative.tasks.length > 0
-                              ? ` · ${initiative.tasks.length} tasks`
-                              : ""}
-                          </summary>
-                          {initiative.description && <p>{initiative.description}</p>}
-                          {initiative.tasks.length > 0 && (
-                            <ul
-                              aria-label="Initiative tasks"
-                              className="initiative-board-task-list"
-                            >
-                              {initiative.tasks.map((task) => (
-                                <li
-                                  className={
-                                    task.completed ? "completed" : undefined
-                                  }
-                                  key={task.id}
-                                >
-                                  <span aria-hidden="true">
-                                    {task.completed ? "✓" : "○"}
-                                  </span>
-                                  {task.text}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </details>
-                      )}
+                      <details className="initiative-card-details">
+                        <summary>
+                          OKR & details
+                          {initiative.tasks.length > 0
+                            ? ` · ${initiative.tasks.length} tasks`
+                            : ""}
+                        </summary>
+                        <dl className="initiative-linked-result">
+                          <dt>Objective</dt>
+                          <dd>{parentObjective?.title ?? "Unknown Objective"}</dd>
+                          <dt>Key Result</dt>
+                          <dd>{linkedKeyResult?.title ?? "Unknown Key Result"}</dd>
+                        </dl>
+                        {initiative.description && <p>{initiative.description}</p>}
+                        {initiative.tasks.length > 0 && (
+                          <ul
+                            aria-label="Initiative tasks"
+                            className="initiative-board-task-list"
+                          >
+                            {initiative.tasks.map((task) => (
+                              <li
+                                className={
+                                  task.completed ? "completed" : undefined
+                                }
+                                key={task.id}
+                              >
+                                <span aria-hidden="true">
+                                  {task.completed ? "✓" : "○"}
+                                </span>
+                                {task.text}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </details>
                       <label className="field initiative-status-select">
                         <span>Move to</span>
                         <select
@@ -1091,16 +1091,18 @@ function KeyResultNode({
           <strong>{keyResult.title}</strong>
           <small className="key-result-metric">{metricSummary(keyResult)}</small>
         </span>
-        <span className="key-result-initiative-count">
-          {initiatives.length} {initiatives.length === 1 ? "Initiative" : "Initiatives"}
+        <span className="key-result-summary-meta">
+          <span className="key-result-initiative-count">
+            {initiatives.length} {initiatives.length === 1 ? "Initiative" : "Initiatives"}
+          </span>
+          <OwnerBadge
+            user={{
+              id: keyResult.ownerId,
+              name: displayUser(project.users, keyResult.ownerId),
+            }}
+          />
+          <ProgressBadge className="progress-number" progress={progress} />
         </span>
-        <OwnerBadge
-          user={{
-            id: keyResult.ownerId,
-            name: displayUser(project.users, keyResult.ownerId),
-          }}
-        />
-        <ProgressBadge className="progress-number" progress={progress} />
       </summary>
       <div className="key-result-body">
         {keyResult.description && (

@@ -1,6 +1,7 @@
 import { z, ZodError } from "zod";
 import { parseProject } from "../domain/project";
 import { NotificationSettingsUpdateSchema } from "../shared/notification-schemas";
+import { reminderLink } from "../shared/cloud-links";
 import { UUIDSchema } from "../shared/schemas";
 import type { Project } from "../shared/types";
 import type { CloudDatabase } from "./project-store";
@@ -10,6 +11,7 @@ export interface NotificationEnvironment {
   SMTP_HOST?: string;
   SMTP_USERNAME?: string;
   SMTP_PASSWORD?: string;
+  APP_BASE_URL?: string;
 }
 
 interface SettingsRow {
@@ -204,7 +206,7 @@ function zurichDate(now: Date): { hour: number; tomorrow: string } {
   return { hour: part("hour"), tomorrow: date.toISOString().slice(0, 10) };
 }
 
-function reminders(project: Project, row: ProjectRow, now: number, tomorrow: string): Reminder[] {
+function reminders(project: Project, row: ProjectRow, now: number, tomorrow: string, appBaseUrl: string | undefined): Reminder[] {
   const result: Reminder[] = [];
   if (row.due_enabled && project.currentCycleId && project.cycles.some((cycle) => cycle.id === project.currentCycleId && cycle.status === "active")) {
     const objectives = new Set(project.objectives.filter((item) => item.cycleId === project.currentCycleId).map((item) => item.id));
@@ -217,8 +219,8 @@ function reminders(project: Project, row: ProjectRow, now: number, tomorrow: str
         rule: "initiative_due",
         eventKey: `${initiative.id}:${initiative.targetDate}`,
         recipient: owner.email,
-        subject: "OKR Master: initiative due tomorrow",
-        text: `Project: ${project.name}\nInitiative: ${initiative.title}\nDue date: ${initiative.targetDate}\n\nThis initiative is due tomorrow.`,
+        subject: "[OKR Master] initiative due tomorrow",
+        text: `Project: ${project.name}\nInitiative: ${initiative.title}\nDue date: ${initiative.targetDate}\n\nThis initiative is due tomorrow. Track your progress on your project dashboard.\n\nInitiatives board: ${reminderLink(appBaseUrl, project.id, "initiatives")}`,
       });
     }
   }
@@ -230,8 +232,8 @@ function reminders(project: Project, row: ProjectRow, now: number, tomorrow: str
         rule: "inactivity",
         eventKey: `${row.change_revision}:${period}`,
         recipient,
-        subject: "OKR Master: project inactivity reminder",
-        text: `Project: ${project.name}\n\nThis project has not changed for at least two weeks.`,
+        subject: "[OKR Master] your OKRs are missing you",
+        text: `Project: ${project.name}\n\nThere have been no updates on your project dashboard for at least two weeks. Track your progress and success on your dashboard.\n\nProject dashboard: ${reminderLink(appBaseUrl, project.id, "okr")}`,
       });
     }
   }
@@ -249,7 +251,7 @@ export async function runNotifications(env: NotificationEnvironment, nowMs?: num
   let attempted = 0;
   for (const row of rows.results) {
     const project = parseProject(JSON.parse(row.data) as unknown);
-    for (const reminder of reminders(project, row, now, local.tomorrow)) {
+    for (const reminder of reminders(project, row, now, local.tomorrow, env.APP_BASE_URL)) {
       if (attempted >= MAX_SENDS_PER_RUN) return;
       const token = crypto.randomUUID();
       const claimed = await env.DB.prepare(
@@ -263,7 +265,7 @@ export async function runNotifications(env: NotificationEnvironment, nowMs?: num
       const currentTime = clock();
       const currentLocal = zurichDate(new Date(currentTime));
       const latestReminder = latest && currentLocal.hour >= 9
-        ? reminders(parseProject(JSON.parse(latest.data) as unknown), latest, Math.floor(currentTime / 1000), currentLocal.tomorrow)
+        ? reminders(parseProject(JSON.parse(latest.data) as unknown), latest, Math.floor(currentTime / 1000), currentLocal.tomorrow, env.APP_BASE_URL)
           .find((item) => item.rule === reminder.rule && item.eventKey === reminder.eventKey && item.recipient === reminder.recipient)
         : undefined;
       if (!latestReminder) {

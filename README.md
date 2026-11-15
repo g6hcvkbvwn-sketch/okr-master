@@ -59,6 +59,14 @@ after SMTP acceptance but before the delivery is recorded can cause a
 duplicate email. Changing project data or settings while an email is already
 being sent cannot cancel that email.
 
+Reminder emails link to the affected project: initiative reminders open the
+initiatives board, and inactivity reminders open the OKR view. Users must
+sign in through Cloudflare Access. If there is no longer an active cycle,
+the link opens project planning instead. The Worker's `APP_BASE_URL` variable
+in `wrangler.toml` must be the public HTTPS origin of the cloud app; update it
+when deploying under a different domain. No project data is included in the
+link beyond its ID.
+
 Notification settings and delivery history are stored in D1, not in project
 JSON or OneDrive backups. After restoring to a new database, reconfigure
 reminders for each project; delivery history is not restored.
@@ -234,6 +242,8 @@ autosave persists planning and review drafts as well as supported project
 changes. Use the sample project at
 [`examples/sample-project.json`](./examples/sample-project.json) to explore an
 active cycle with Objectives, Key Results, users, and an Initiative.
+On the initiatives board, expand **OKR & details** to see an initiative's
+Objective, Key Result, description, and tasks.
 
 Completed reviews lock their cycles and preserve Company Goal and assigned-user
 snapshots. History is read-only. A review must be submitted before planning the

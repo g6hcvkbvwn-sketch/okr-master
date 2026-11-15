@@ -40,7 +40,7 @@ export default {
   async scheduled(_controller: unknown, env: CloudEnvironment): Promise<void> {
     const results = await Promise.allSettled([runPendingBackup(env), runNotifications(env)]);
     if (results[0].status === "rejected") console.error("Scheduled backup failed.");
-    if (results[1].status === "rejected") console.error("Scheduled notifications failed.");
+    if (results[1].status === "rejected") console.error("Scheduled notifications failed. Check project data and APP_BASE_URL configuration.");
     if (results.some((result) => result.status === "rejected")) throw new Error("A scheduled operation failed.");
   },
 };

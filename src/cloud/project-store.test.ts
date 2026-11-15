@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { exportJWK, generateKeyPair, SignJWT } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createProject, parseProject } from "../domain/project";
+import { readReminderLink } from "../shared/cloud-links";
 import { handleProjectApi } from "./api";
 import { handleBackupApi, runPendingBackup, type BackupEnvironment } from "./onedrive";
 import { handleNotificationApi, runNotifications, type NotificationEnvironment } from "./notifications";
@@ -209,6 +210,7 @@ describe("cloud reminders", () => {
     await result.store.create(project);
     const env: NotificationEnvironment = {
       DB: result.db, SMTP_HOST: "smtp.example.com", SMTP_USERNAME: "okr@example.com", SMTP_PASSWORD: "test",
+      APP_BASE_URL: "https://okr.example",
     };
     return { ...result, project, env };
   }
@@ -308,7 +310,14 @@ describe("cloud reminders", () => {
     await runNotifications(env, now, send);
     await runNotifications(env, now + 300_000, send);
     expect(send).toHaveBeenCalledTimes(1);
-    expect(send.mock.calls[0]?.[1]).toMatchObject({ recipient: "alex@example.com" });
+    expect(send.mock.calls[0]?.[1]).toEqual({
+      recipient: "alex@example.com",
+      projectId: project.id,
+      rule: "initiative_due",
+      eventKey: `${project.initiatives[0]!.id}:2026-11-15`,
+      subject: "[OKR Master] initiative due tomorrow",
+      text: `Project: ${project.name}\nInitiative: ${project.initiatives[0]!.title}\nDue date: 2026-11-15\n\nThis initiative is due tomorrow. Track your progress on your project dashboard.\n\nInitiatives board: https://okr.example/?project=${project.id}&view=initiatives`,
+    });
 
     const summer = Date.parse("2026-03-29T07:00:00Z");
     await store.save(project.id, 1, {
@@ -336,9 +345,25 @@ describe("cloud reminders", () => {
     await runNotifications(env, now + 1000, send);
     await runNotifications(env, now + 300_000, send);
     expect(send).toHaveBeenCalledTimes(1);
-    expect(send.mock.calls[0]?.[1]).toMatchObject({ recipient: "alex@example.com" });
+    expect(send.mock.calls[0]?.[1]).toMatchObject({
+      recipient: "alex@example.com",
+      subject: "[OKR Master] your OKRs are missing you",
+      text: `Project: ${project.name}\n\nThere have been no updates on your project dashboard for at least two weeks. Track your progress and success on your dashboard.\n\nProject dashboard: https://okr.example/?project=${project.id}&view=okr`,
+    });
     await runNotifications(env, now + (twoWeeks + 1) * 1000, send);
     expect(send).toHaveBeenCalledTimes(2);
+  });
+
+  it("validates reminder links and does not send when the app URL is invalid", async () => {
+    const { env, sqlite, project } = await setup();
+    sqlite.prepare("UPDATE notification_settings SET enabled = 1, due_enabled = 1 WHERE project_id = ?").run(project.id);
+    const send = vi.fn(async () => {});
+    await expect(runNotifications({ ...env, APP_BASE_URL: "http://unsafe.example" }, now, send)).rejects.toThrow("APP_BASE_URL");
+    expect(send).not.toHaveBeenCalled();
+    expect(readReminderLink(new URL(`https://okr.example/?project=${project.id}&view=initiatives`))).toEqual({ projectId: project.id, view: "initiatives" });
+    expect(readReminderLink(new URL("https://okr.example/"))).toBeNull();
+    expect(() => readReminderLink(new URL(`https://okr.example/?project=${project.id}&view=other`))).toThrow("invalid");
+    expect(() => readReminderLink(new URL("https://okr.example/?project=invalid&view=okr"))).toThrow("invalid");
   });
 
   it("prevents concurrent duplicates, records failures, and retries after one hour", async () => {

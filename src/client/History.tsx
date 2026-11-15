@@ -183,11 +183,13 @@ export function History({ project }: { project: Project }) {
                                 {formatMetric(result.keyResult)}
                               </small>
                             </span>
-                            <OwnerBadge user={result.owner} />
-                            <ProgressBadge
-                              className="progress-number"
-                              progress={result.progress}
-                            />
+                            <span className="key-result-summary-meta">
+                              <OwnerBadge user={result.owner} />
+                              <ProgressBadge
+                                className="progress-number"
+                                progress={result.progress}
+                              />
+                            </span>
                           </summary>
                           <div className="key-result-body">
                             {result.keyResult.description && (

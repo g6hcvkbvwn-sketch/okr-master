@@ -413,11 +413,13 @@ function ViewerKeyResult({
           <strong>{keyResult.title}</strong>
           <small className="key-result-metric">{formatMetric(keyResult)}</small>
         </span>
-        <span className="key-result-initiative-count">
-          {initiatives.length} {initiatives.length === 1 ? "Initiative" : "Initiatives"}
+        <span className="key-result-summary-meta">
+          <span className="key-result-initiative-count">
+            {initiatives.length} {initiatives.length === 1 ? "Initiative" : "Initiatives"}
+          </span>
+          <OwnerBadge user={displayUser(project, keyResult.ownerId)} />
+          <ProgressBadge className="progress-number" progress={progress} />
         </span>
-        <OwnerBadge user={displayUser(project, keyResult.ownerId)} />
-        <ProgressBadge className="progress-number" progress={progress} />
       </summary>
       <div className="key-result-body">
         {keyResult.description && (

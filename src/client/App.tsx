@@ -13,12 +13,14 @@ import { Publishing } from "./Publishing";
 import { CloudProjects } from "./CloudProjects";
 import { CloudBackup } from "./CloudBackup";
 import { CloudNotifications } from "./CloudNotifications";
+import { selectCloudProject } from "./cloud-api";
 import { UserAvatar } from "./OwnerBadge";
 import { ProgressBadge } from "./ProgressBadge";
 import { Review } from "./Review";
 import { UserColorsContext } from "./user-colors";
 import logoUrl from "./assets/logo-128.png";
 import { assignUserColors } from "../domain/user-colors";
+import { readReminderLink } from "../shared/cloud-links";
 import {
   movePlanningCompanyGoal,
   removePlanningCompanyGoal,
@@ -98,6 +100,7 @@ export function App() {
   const projectRef = useRef<Project | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [view, setView] = useState<View>("Current Cycle");
+  const [initialCycleView, setInitialCycleView] = useState<"okr" | "initiatives">("okr");
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
@@ -138,25 +141,44 @@ export function App() {
 
   useEffect(() => {
     let mounted = true;
-    api
-      .getSession()
-      .then((session) => {
+    async function loadSession() {
+      const url = new URL(window.location.href);
+      try {
+        const target = isCloud ? readReminderLink(url) : null;
+        const session = target
+          ? { project: await selectCloudProject(target.projectId), fileName: null, recoveryMessage: null }
+          : await api.getSession();
         if (!mounted) return;
         installProject(session.project);
         setFileName(session.fileName);
         setRecoveryMessage(session.recoveryMessage ?? "");
-        setView(session.project?.currentCycleId ? "Current Cycle" : "Planning");
-      })
-      .catch((error: unknown) => {
+        const activeCycle = session.project?.cycles.some((cycle) => cycle.id === session.project?.currentCycleId && cycle.status === "active");
+        setInitialCycleView(activeCycle ? (target?.view ?? "okr") : "okr");
+        setView(target ? (activeCycle ? "Current Cycle" : "Planning") : (session.project?.currentCycleId ? "Current Cycle" : "Planning"));
+      } catch (error) {
         if (mounted) setLoadError(errorText(error));
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+      } finally {
+        if (mounted) {
+          if (isCloud && url.searchParams.has("project")) {
+            url.searchParams.delete("project");
+            url.searchParams.delete("view");
+            window.history.replaceState(window.history.state, "", url);
+          }
+          setLoading(false);
+        }
+      }
+    }
+    void loadSession();
     return () => {
       mounted = false;
     };
   }, [installProject]);
+
+  useEffect(() => {
+    if (!loading && project && view === "Current Cycle" && initialCycleView !== "okr") {
+      setInitialCycleView("okr");
+    }
+  }, [loading, project, view, initialCycleView]);
 
   useEffect(() => {
     if (isCloud) {
@@ -826,6 +848,7 @@ export function App() {
             {view === "Current Cycle" && (
               <CurrentCycle
                 activeUsers={activeUsers}
+                initialView={initialCycleView}
                 onSave={saveActiveCycleChange}
                 project={project}
               />
